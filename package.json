@@ -1,0 +1,20 @@
+{
+  "name": "discord-event-extractor",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "chrome-remote-interface": "^0.33.3",
+    "electron": "^28.1.0",
+    "node-fetch": "^2.7.0",
+    "puppeteer": "^21.11.0",
+    "xlsx": "^0.18.5"
+  }
+}
