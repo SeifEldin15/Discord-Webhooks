@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Discord Event Extractor</title>
     <style>
         body { padding: 20px; }
         .input-group { margin-bottom: 20px; }
-        input[type="text"] { width: 300px; padding: 5px; margin-right: 10px; }
+        input[type="text"], input[type="file"] { width: 300px; padding: 5px; margin-right: 10px; }
         .status { margin-top: 20px; padding: 10px; }
         .success { color: green; }
         .error { color: red; }
@@ -16,96 +18,57 @@
     <h1>Discord Event Extractor</h1>
     
     <div class="input-group">
-        <input type="text" id="urlInput" placeholder="Enter Discord message URL">
-        <button onclick="processUrl()">Process URL</button>
-    </div>
-
-    <div class="input-group">
         <input type="file" id="xlsxInput" accept=".xlsx">
         <button onclick="processXlsx()">Process XLSX</button>
     </div>
 
     <div class="input-group">
-        <label for="extensionId">Extension ID:</label>
-        <input type="text" id="extensionId" value="kkkedjphmncgdbjmcjogdadmljcabaah" placeholder="kkkedjphmncgdbjmcjogdadmljcabaah">
-        <label for="buttonSelector">Button Selector:</label>
-        <input type="text" id="buttonSelector" placeholder="Enter CSS selector for button">
+        <input type="text" id="discordUrl" placeholder="Enter Discord URL">
+        <button onclick="scrapeDiscord()">Scrape Discord</button>
     </div>
 
     <div id="status"></div>
-    <div id="processingStatus" style="display: none;">
-        <p>Processing link <span id="currentLink">0</span> of <span id="totalLinks">0</span></p>
-        <p>Current link: <span id="linkUrl"></span></p>
-    </div>
 
     <script>
         const { ipcRenderer } = require('electron');
 
-        function processUrl() {
-            const urlInput = document.getElementById('urlInput');
-            const url = urlInput.value.trim();
-            
-            if (!url) {
-                showStatus('Please enter a Discord message URL', 'error');
-                return;
-            }
-
-            showStatus('Opening URL and processing data...', 'processing');
-            ipcRenderer.send('fetch-url', url);
-        }
-
         function processXlsx() {
             const fileInput = document.getElementById('xlsxInput');
-            
-            if (!fileInput.files || fileInput.files.length === 0) {
+            if (!fileInput.files.length) {
                 showStatus('Please select an XLSX file', 'error');
                 return;
             }
+            const filePath = fileInput.files[0].path;
+            showStatus('Processing XLSX file...', 'processing');
+            ipcRenderer.send('process-xlsx', { filePath });
+        }
 
-            const extensionId = document.getElementById('extensionId').value.trim();
-            const buttonSelector = document.getElementById('buttonSelector').value.trim();
-            
-            if (!extensionId) {
-                showStatus('Please enter the extension ID', 'error');
+        function scrapeDiscord() {
+            const urlInput = document.getElementById('discordUrl');
+            const url = urlInput.value.trim();
+            if (!url) {
+                showStatus('Please enter a Discord URL', 'error');
                 return;
             }
-
-            const filePath = fileInput.files[0].path;
-            showStatus('Processing XLSX file and opening checkout links...', 'processing');
-            document.getElementById('processingStatus').style.display = 'block';
-            ipcRenderer.send('process-xlsx', { filePath, extensionId, buttonSelector });
+            showStatus('Scraping Discord data...', 'processing');
+            ipcRenderer.send('scrape-discord', { url });
         }
 
         function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status');
             statusDiv.textContent = message;
-            statusDiv.className = `status ${type || ''}`;
+            statusDiv.className = `status ${type}`;
         }
 
-        // Listen for responses
-        ipcRenderer.on('process-complete', (event, data) => {
-            showStatus(`Successfully processed ${data.count} events. ${data.message}`, 'success');
+        ipcRenderer.on('xlsx-process-complete', (event, data) => showStatus(`Successfully processed ${data.count} links.`, 'success'));
+        ipcRenderer.on('xlsx-process-error', (event, error) => showStatus(`Error: ${error}`, 'error'));
+        ipcRenderer.on('discord-scrape-complete', (event, { data, savedFilePath }) => {
+            showStatus(`Successfully scraped ${data.length} events. File saved to: ${savedFilePath}`, 'success');
+            console.log('Scraped data:', data);
+            console.log('Saved to:', savedFilePath);
         });
-
-        ipcRenderer.on('fetch-error', (event, error) => {
-            showStatus('Error: ' + error, 'error');
-        });
-
-        // Listen for processing status updates
-        ipcRenderer.on('xlsx-processing-status', (event, data) => {
-            document.getElementById('currentLink').textContent = data.current;
-            document.getElementById('totalLinks').textContent = data.total;
-            document.getElementById('linkUrl').textContent = data.link;
-        });
-
-        ipcRenderer.on('xlsx-process-complete', (event, data) => {
-            document.getElementById('processingStatus').style.display = 'none';
-            showStatus(`Successfully processed ${data.count} checkout links.`, 'success');
-        });
-
-        ipcRenderer.on('xlsx-process-error', (event, error) => {
-            document.getElementById('processingStatus').style.display = 'none';
-            showStatus('Error processing XLSX: ' + error, 'error');
+        ipcRenderer.on('discord-scrape-error', (event, error) => {
+            showStatus(`Error: ${error}`, 'error');
         });
     </script>
 </body>
