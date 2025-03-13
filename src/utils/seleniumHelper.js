@@ -57,34 +57,76 @@ export async function launchBrowserWithExtension() {
 }
 
 
-export async function processLinks(driver, data) {
+export async function processLinks(driver, data , cardData) {
     for (let i = 0; i < data.length; i++) {
         const link = data[i]['Full Checkout Link'];
         if (!link) continue;
         
         try {
             await driver.get(link);
-            await driver.sleep(2000);  // Wait for page load
+            await activateExtension(driver);
+
+            await driver.sleep(25000);  // Wait for page load
             
-            // Use the exact keyboard shortcut shown in the screenshot: Ctrl + Shift + E
-            const actions = driver.actions({async: true});
-            await actions
-                .keyDown(Key.CONTROL)
-                .keyDown(Key.SHIFT)
-                .sendKeys('e')
-                .keyUp(Key.SHIFT)
-                .keyUp(Key.CONTROL)
-                .perform();
-            
+            // sc-gnZYdo hRwCiG
+
+            // Click "Add New Card" button
+            const addNewCardButton = await driver.wait(
+                until.elementLocated(By.querySelector('#stored-wallet-items-form > li')),
+                10000
+            );
+            await addNewCardButton.click();
             await driver.sleep(3000);
+
+            // Fill out the credit card form
+            // Note: You might need to adjust selectors based on the actual form structure
+            await driver.findElement(By.css('input[name="cardholderName"]')).sendKeys(cardData.cardName);
+            await driver.findElement(By.css('input[placeholder*="Card Number"]')).sendKeys(cardData.cardNumber);
+            await driver.findElement(By.css('input[placeholder="MM/YY"]')).sendKeys(cardData.expiration);
+            await driver.findElement(By.css('input[placeholder="CVV"]')).sendKeys(cardData.cvv);
+
+            await driver.sleep(200000);  // Wait for page load
+
+            // // Fill address details
+            // await driver.findElement(By.css('input[placeholder*="Address Line 1"]')).sendKeys(cardData.address1);
+            // await driver.findElement(By.css('input[placeholder*="City"]')).sendKeys(cardData.city);
             
-            console.log(`Processed link ${i + 1} with keyboard shortcut`);
+            // // Select state from dropdown
+            // const stateDropdown = await driver.findElement(By.css('select[name="state"]'));
+            // await stateDropdown.click();
+            // await stateDropdown.sendKeys(cardData.state);
+            
+            // await driver.findElement(By.css('input[placeholder*="Postal Code"]')).sendKeys(cardData.zipCode);
+            // await driver.findElement(By.css('input[placeholder*="Phone Number"]')).sendKeys(cardData.phone);
+            
+            // // Ensure "Save this card" is NOT checked
+            // const saveCardCheckbox = await driver.findElement(By.css('input[type="checkbox"]'));
+            // const isChecked = await saveCardCheckbox.isSelected();
+            // if (isChecked) {
+            //     await saveCardCheckbox.click();
+            // }
+            
+            console.log(`Processed link ${i + 1}`);
             
         } catch (error) {
             console.error(`Error processing link ${i + 1}:`, error);
             console.log('Current URL:', await driver.getCurrentUrl());
         }
     }
+}
+
+
+async function activateExtension(driver) {
+    const actions = driver.actions({async: true});
+    await actions
+        .keyDown(Key.CONTROL)
+        .keyDown(Key.SHIFT)
+        .sendKeys('e')
+        .keyUp(Key.SHIFT)
+        .keyUp(Key.CONTROL)
+        .perform();
+    
+    await driver.sleep(3000);
 }
 
 export async function scrapeDiscordData(driver, url) {
