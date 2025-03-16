@@ -66,17 +66,33 @@ export async function processLinks(driver, data , cardData) {
             await driver.get(link);
             await activateExtension(driver);
 
-            await driver.sleep(25000);  // Wait for page load
+            await driver.sleep(20000);  // Wait for page load
             
-            // sc-gnZYdo hRwCiG
 
-            // Click "Add New Card" button
+
+            // Wait for the button to be present
             const addNewCardButton = await driver.wait(
-                until.elementLocated(By.querySelector('#stored-wallet-items-form > li')),
+                until.elementLocated(By.css('[data-tid="add-new-card"]')),
                 10000
             );
+
+            // Scroll the button into view
+            await driver.executeScript("arguments[0].scrollIntoView({ behavior: 'smooth', block: 'center' });", addNewCardButton);
+            
+            // Wait a moment for the scroll animation to complete
+            await driver.sleep(1000);
+
+            // Make sure the button is clickable
+            await driver.wait(
+                until.elementIsVisible(addNewCardButton),
+                5000,
+                'Add New Card button is not visible'
+            );
+
+            // Click the button
             await addNewCardButton.click();
-            await driver.sleep(3000);
+
+            await driver.sleep(2000);
 
             // Fill out the credit card form
             // Note: You might need to adjust selectors based on the actual form structure
