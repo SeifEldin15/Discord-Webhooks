@@ -3,6 +3,7 @@ import * as chrome from 'selenium-webdriver/chrome.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { Key } from 'selenium-webdriver';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,76 +58,120 @@ export async function launchBrowserWithExtension() {
 }
 
 
-export async function processLinks(driver, data , cardData) {
+export async function processLinks(driver, data, cardData) {
     for (let i = 0; i < data.length; i++) {
         const link = data[i]['Full Checkout Link'];
         if (!link) continue;
-        
         try {
             await driver.get(link);
             await activateExtension(driver);
 
-            await driver.sleep(20000);  // Wait for page load
+            // Enter the email
+            // await driver.findElement(By.id("email[objectobject]__input")).sendKeys("superuser123@post.com");
+            // await driver.findElement(By.id("password[objectobject]__input")).sendKeys("Ticketmaster!123");
+            // await driver.findElement(By.name("sign-in")).click();
+
+            await driver.sleep(7000); // Wait for options to load
+
+            // Wait for the iframe to be present
+            await driver.wait(until.ableToSwitchToFrame(driver.findElement(By.className("zoid-component-frame"))));
+        
+            // Click on the "Add New Card" button
+            await driver.wait(until.elementIsVisible(driver.findElement(By.css("button[data-tid='add-new-card-link']")))).click();
+
+
+            // Wait for the name on card field and enter the name
+            await driver.wait(until.elementIsVisible(driver.findElement(By.id("name-on-card")))).sendKeys(cardData.cardName);
+
+            // Switch to the Braintree hosted field for credit card number
+            await driver.wait(until.ableToSwitchToFrame(driver.findElement(By.id("braintree-hosted-field-number"))));
+            await driver.wait(until.elementIsVisible(driver.findElement(By.id("credit-card-number")))).sendKeys(cardData.cardNumber);
+
+            await driver.switchTo().parentFrame();
+        
+            // Switch to the Braintree hosted field for expiration date
+            await driver.wait(until.ableToSwitchToFrame(driver.findElement(By.id("braintree-hosted-field-expirationDate"))));
+            await driver.wait(until.elementIsVisible(driver.findElement(By.id("expiration")))).sendKeys(String(cardData.expiration));
+
+            await driver.switchTo().parentFrame();
+
+            // Switch to the Braintree hosted field for CVV
+            await driver.wait(until.ableToSwitchToFrame(driver.findElement(By.id("braintree-hosted-field-cvv"))));
+            await driver.wait(until.elementIsVisible(driver.findElement(By.id("cvv")))).sendKeys(String(cardData.cvv));
+
+            await driver.switchTo().parentFrame();
+
+            // Select country
+            const countryDropdown = await driver.findElement(By.id("country-dropdown"));
+            await countryDropdown.click();
+
+            const desiredCountry = "United States";
+            const countryOptions = await driver.findElements(By.css(".fwm__dropDownItem"));
+
+            for (let option of countryOptions) {
+                if (await option.getText() === desiredCountry) {
+                    await option.click();
+                    break;
+                }
+            }
+
+            // Fill in address fields
+            await driver.findElement(By.id("address")).sendKeys(cardData.address1);
+            await driver.findElement(By.id("city")).sendKeys(cardData.city);
+
+            // Select state
+            const stateDropdown = await driver.findElement(By.id("state-dropdown"));
+            await stateDropdown.click();
+
+            await driver.sleep(1000); // Wait for options to load
+
+            const stateOptions = await driver.findElements(By.css(".fwm__dropDownItem"));
             
 
+            for (let option of stateOptions) {
+                if (await option.getText() === cardData.state) {
+                    await option.click();
+                    break;
+                }
+            }
+        
 
-            // Wait for the button to be present
-            const addNewCardButton = await driver.wait(
-                until.elementLocated(By.css('[data-tid="add-new-card"]')),
-                10000
-            );
+            // Fill in postal code and phone
+            await driver.findElement(By.id("postal-code")).sendKeys(cardData.postalCode);
+            await driver.findElement(By.id("phone")).sendKeys(cardData.phone);
 
-            // Scroll the button into view
-            await driver.executeScript("arguments[0].scrollIntoView({ behavior: 'smooth', block: 'center' });", addNewCardButton);
-            
-            // Wait a moment for the scroll animation to complete
-            await driver.sleep(1000);
+            // Wait for the checkbox to be present and click it
+            const checkbox1 = await driver.wait(until.elementLocated(By.id("save-cardSave this card for future purchasesinput")));
+            await driver.executeScript("arguments[0].click();", checkbox1);
+            await driver.sleep(3000);
 
-            // Make sure the button is clickable
-            await driver.wait(
-                until.elementIsVisible(addNewCardButton),
-                5000,
-                'Add New Card button is not visible'
-            );
+            // Click the "Add Card" button
+            const addCardButton = await driver.wait(until.elementIsVisible(driver.findElement(By.css("button[data-tid='add-wallet-item-btn']"))));
+            await addCardButton.click();
+            await driver.sleep(5000);
 
-            // Click the button
-            await addNewCardButton.click();
 
-            await driver.sleep(2000);
+            await driver.switchTo().parentFrame();
+            // Click the "No, do not protect my resale ticket purchase" option
+            const noProtectLabel = await driver.findElement(By.id("nofalselabel"));
+            await noProtectLabel.click();
 
-            // Fill out the credit card form
-            // Note: You might need to adjust selectors based on the actual form structure
-            await driver.findElement(By.css('input[name="cardholderName"]')).sendKeys(cardData.cardName);
-            await driver.findElement(By.css('input[placeholder*="Card Number"]')).sendKeys(cardData.cardNumber);
-            await driver.findElement(By.css('input[placeholder="MM/YY"]')).sendKeys(cardData.expiration);
-            await driver.findElement(By.css('input[placeholder="CVV"]')).sendKeys(cardData.cvv);
+            // Click the checkbox
+            const checkbox = await driver.wait(until.elementLocated(By.id(("placeOrderOptIn1-input"))));
+            await driver.executeScript("arguments[0].click();", checkbox);
 
-            await driver.sleep(200000);  // Wait for page load
+            // Click the "Place Order" button
+            const placeOrderButton = await driver.wait(until.elementIsVisible(driver.findElement(By.css("button[data-tid='place-order-btn']"))));
+            await placeOrderButton.click();
 
-            // // Fill address details
-            // await driver.findElement(By.css('input[placeholder*="Address Line 1"]')).sendKeys(cardData.address1);
-            // await driver.findElement(By.css('input[placeholder*="City"]')).sendKeys(cardData.city);
-            
-            // // Select state from dropdown
-            // const stateDropdown = await driver.findElement(By.css('select[name="state"]'));
-            // await stateDropdown.click();
-            // await stateDropdown.sendKeys(cardData.state);
-            
-            // await driver.findElement(By.css('input[placeholder*="Postal Code"]')).sendKeys(cardData.zipCode);
-            // await driver.findElement(By.css('input[placeholder*="Phone Number"]')).sendKeys(cardData.phone);
-            
-            // // Ensure "Save this card" is NOT checked
-            // const saveCardCheckbox = await driver.findElement(By.css('input[type="checkbox"]'));
-            // const isChecked = await saveCardCheckbox.isSelected();
-            // if (isChecked) {
-            //     await saveCardCheckbox.click();
-            // }
+            await driver.sleep(30000); 
+
+        
             
             console.log(`Processed link ${i + 1}`);
-            
+
         } catch (error) {
             console.error(`Error processing link ${i + 1}:`, error);
-            console.log('Current URL:', await driver.getCurrentUrl());
         }
     }
 }

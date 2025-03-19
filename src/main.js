@@ -25,7 +25,7 @@ ipcMain.on('process-xlsx', async (event, { filePath }) => {
         driver = await launchBrowserWithExtension();
         const data = processExcelFile(filePath);
         const cardData = processExcelFile("src/data/cards.xlsx");
-        await processLinks(driver, data, cardData);
+        await processLinks(driver, data, cardData[0]);
         event.reply('xlsx-process-complete', { count: data.length });
     } catch (error) {
         event.reply('xlsx-process-error', error.message);
