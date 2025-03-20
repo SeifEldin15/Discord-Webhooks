@@ -66,12 +66,16 @@ export async function processLinks(driver, data, cardData) {
             await driver.get(link);
             await activateExtension(driver);
 
-            // Enter the email
-            // await driver.findElement(By.id("email[objectobject]__input")).sendKeys("superuser123@post.com");
-            // await driver.findElement(By.id("password[objectobject]__input")).sendKeys("Ticketmaster!123");
-            // await driver.findElement(By.name("sign-in")).click();
+            // Attempt to enter email and password, skip if not found
+            try {
+                await driver.findElement(By.id("email[objectobject]__input")).sendKeys("superuser123@post.com");
+                await driver.findElement(By.id("password[objectobject]__input")).sendKeys("Ticketmaster!123");
+                await driver.findElement(By.name("sign-in")).click();
+            } catch (error) {
+                console.warn('skip if not found');
+            }
 
-            await driver.sleep(7000); // Wait for options to load
+            await driver.sleep(5000); // Wait for options to load
 
             // Wait for the iframe to be present
             await driver.wait(until.ableToSwitchToFrame(driver.findElement(By.className("zoid-component-frame"))));
@@ -143,14 +147,13 @@ export async function processLinks(driver, data, cardData) {
             // Wait for the checkbox to be present and click it
             const checkbox1 = await driver.wait(until.elementLocated(By.id("save-cardSave this card for future purchasesinput")));
             await driver.executeScript("arguments[0].click();", checkbox1);
-            await driver.sleep(3000);
 
             // Click the "Add Card" button
             const addCardButton = await driver.wait(until.elementIsVisible(driver.findElement(By.css("button[data-tid='add-wallet-item-btn']"))));
             await addCardButton.click();
-            await driver.sleep(5000);
+            await driver.sleep(7000);
 
-
+            
             await driver.switchTo().parentFrame();
             // Click the "No, do not protect my resale ticket purchase" option
             const noProtectLabel = await driver.findElement(By.id("nofalselabel"));
@@ -164,7 +167,7 @@ export async function processLinks(driver, data, cardData) {
             const placeOrderButton = await driver.wait(until.elementIsVisible(driver.findElement(By.css("button[data-tid='place-order-btn']"))));
             await placeOrderButton.click();
 
-            await driver.sleep(30000); 
+            await driver.sleep(60000); 
 
         
             
