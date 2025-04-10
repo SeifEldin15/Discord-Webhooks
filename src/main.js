@@ -1,11 +1,11 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
-import { launchBrowserWithExtension, processLinks, scrapeDiscordData } from './utils/seleniumHelper.js';
-import { processExcelFile, saveToExcel } from './utils/fileProcessor.js';
+import { launchBrowserWithExtension, processLinks, scrapeEncsoftData } from './utils/seleniumHelper.js';
 
 app.commandLine.appendSwitch('no-sandbox');
 
 let mainWindow;
+let orders = [];
 
 app.whenReady().then(() => {
     mainWindow = new BrowserWindow({
@@ -19,36 +19,48 @@ app.whenReady().then(() => {
     mainWindow.loadFile('index.html');
 });
 
-ipcMain.on('process-xlsx', async (event, { filePath }) => {
+ipcMain.on('fetch-data', async (event, { url }) => {
     let driver;
     try {
         driver = await launchBrowserWithExtension();
-        const data = processExcelFile(filePath);
-        const cardData = processExcelFile("src/data/cards.xlsx");
-        await processLinks(driver, data, cardData[0]);
-        event.reply('xlsx-process-complete', { count: data.length });
+        const scrapedOrders = await scrapeEncsoftData(driver, url);
+        orders = scrapedOrders; // Store the orders in memory
+        event.reply('data-fetch-complete', { orders });
     } catch (error) {
-        event.reply('xlsx-process-error', error.message);
+        console.error('Error fetching data:', error);
+        event.reply('data-fetch-error', { error: error.message });
     } finally {
         if (driver) await driver.quit();
     }
 });
 
-ipcMain.on('scrape-discord', async (event, { url }) => {
+ipcMain.on('process-order', async (event, { index }) => {
+    const order = orders[index];
+    if (!order) {
+        event.reply('order-update', { index, status: 'Error: Order not found' });
+        return;
+    }
+
     let driver;
     try {
         driver = await launchBrowserWithExtension();
-        const data = await scrapeDiscordData(driver, url);
         
-        // Save the data to Excel
-        const savedFilePath = saveToExcel(data);
-        
-        event.reply('discord-scrape-complete', { 
-            data,
-            savedFilePath 
+        await processLinks(driver, [{ 'Full Checkout Link': order.checkoutUrl }], {
+            cardName: 'Test User',
+            cardNumber: '4111111111111111',
+            expiration: '1225',
+            cvv: '123',
+            address1: '123 Test St',
+            city: 'Test City',
+            state: 'California',
+            postalCode: '12345',
+            phone: '1234567890'
         });
+
+        event.reply('order-update', { index, status: 'Successfully Processed' });
     } catch (error) {
-        event.reply('discord-scrape-error', error.message);
+        console.error('Error processing order:', error);
+        event.reply('order-update', { index, status: 'Error: ' + error.message });
     } finally {
         if (driver) await driver.quit();
     }

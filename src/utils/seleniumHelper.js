@@ -57,22 +57,19 @@ export async function launchBrowserWithExtension() {
     }
 }
 
-
-export async function processLinks(driver, data, cardData) {
-    for (let i = 0; i < data.length; i++) {
-        const link = data[i]['Full Checkout Link'];
-        if (!link) continue;
+export async function processLinks(driver, links, cardData) {
+    for (const link of links) {
         try {
-            await driver.get(link);
+            await driver.get(link['Full Checkout Link']);
             await activateExtension(driver);
 
             // Attempt to enter email and password, skip if not found
             try {
-                await driver.findElement(By.id("email[objectobject]__input")).sendKeys("superuser123@post.com");
-                await driver.findElement(By.id("password[objectobject]__input")).sendKeys("Ticketmaster!123");
+                await driver.findElement(By.id("email[objectobject]__input")).sendKeys(cardData.email || "superuser123@post.com");
+                await driver.findElement(By.id("password[objectobject]__input")).sendKeys(cardData.password || "Ticketmaster!123");
                 await driver.findElement(By.name("sign-in")).click();
             } catch (error) {
-                console.warn('skip if not found');
+                console.warn('Login form not found, continuing...');
             }
 
             await driver.sleep(5000); // Wait for options to load
@@ -82,7 +79,6 @@ export async function processLinks(driver, data, cardData) {
         
             // Click on the "Add New Card" button
             await driver.wait(until.elementIsVisible(driver.findElement(By.css("button[data-tid='add-new-card-link']")))).click();
-
 
             // Wait for the name on card field and enter the name
             await driver.wait(until.elementIsVisible(driver.findElement(By.id("name-on-card")))).sendKeys(cardData.cardName);
@@ -131,14 +127,12 @@ export async function processLinks(driver, data, cardData) {
 
             const stateOptions = await driver.findElements(By.css(".fwm__dropDownItem"));
             
-
             for (let option of stateOptions) {
                 if (await option.getText() === cardData.state) {
                     await option.click();
                     break;
                 }
             }
-        
 
             // Fill in postal code and phone
             await driver.findElement(By.id("postal-code")).sendKeys(cardData.postalCode);
@@ -153,8 +147,8 @@ export async function processLinks(driver, data, cardData) {
             await addCardButton.click();
             await driver.sleep(7000);
 
-            
             await driver.switchTo().parentFrame();
+            
             // Click the "No, do not protect my resale ticket purchase" option
             const noProtectLabel = await driver.findElement(By.id("nofalselabel"));
             await noProtectLabel.click();
@@ -167,18 +161,14 @@ export async function processLinks(driver, data, cardData) {
             const placeOrderButton = await driver.wait(until.elementIsVisible(driver.findElement(By.css("button[data-tid='place-order-btn']"))));
             await placeOrderButton.click();
 
-            await driver.sleep(60000); 
-
-        
-            
-            console.log(`Processed link ${i + 1}`);
+            await driver.sleep(5000); // Wait for order confirmation
 
         } catch (error) {
-            console.error(`Error processing link ${i + 1}:`, error);
+            console.error('Error processing link:', error);
+            throw error;
         }
     }
 }
-
 
 async function activateExtension(driver) {
     const actions = driver.actions({async: true});
@@ -254,6 +244,76 @@ export async function scrapeDiscordData(driver, url) {
         });
         
         console.log('Data extracted:', eventData);
+        return eventData;
+        
+    } catch (error) {
+        console.error('Scraping error:', error);
+        throw error;
+    }
+}
+
+export async function scrapeEncsoftData(driver, url) {
+    try {
+        console.log('Navigating to:', url);
+        await driver.get(url);
+        
+        // Wait for the discord messages to be present
+        await driver.wait(until.elementLocated(By.className('discord-message')), 30000);
+        
+        // Execute JavaScript in the browser to extract data
+        const eventData = await driver.executeScript(() => {
+            const messages = document.querySelectorAll('.discord-message');
+            return Array.from(messages).map(message => {
+                const fields = {};
+                
+                // Get all fields from the embed
+                const embedFields = message.querySelectorAll('.field');
+                embedFields.forEach(field => {
+                    const title = field.querySelector('.title');
+                    const description = field.querySelector('.description');
+                    if (title && description) {
+                        const name = title.textContent.trim();
+                        let value = description.textContent.trim();
+                        
+                        // Handle spoiler text
+                        const spoiler = description.querySelector('.spoiler');
+                        if (spoiler) {
+                            value = spoiler.textContent.trim();
+                        }
+                        
+                        // Handle links
+                        const link = description.querySelector('a');
+                        if (link) {
+                            value = link.href;
+                        }
+                        
+                        fields[name] = value;
+                    }
+                });
+
+                // Get the main checkout link from the embed description
+                const embedDescription = message.querySelector('.embed .description a');
+                const checkoutUrl = embedDescription ? embedDescription.href : '';
+                
+                return {
+                    store: fields['Event name'] || 'Unknown Event',
+                    status: 'Ready to Process',
+                    items: `${fields['Amount'] || '1'}x ${fields['Section'] || ''} ${fields['Row'] || ''}`.trim(),
+                    total: parseFloat(fields['Price'] || '0'),
+                    customerName: fields['Account'] || 'To be filled',
+                    customerPhone: 'To be filled',
+                    customerEmail: fields['Account'] || 'To be filled',
+                    paymentLast4: 'xxxx',
+                    estimatedArrival: fields['Expiration'] || 'N/A',
+                    checkoutUrl: checkoutUrl,
+                    // Additional data for processing
+                    password: fields['Password'] || '',
+                    fullCheckoutUrl: fields['Full checkout'] || ''
+                };
+            }).filter(data => data.checkoutUrl); // Only include items with checkout URLs
+        });
+        
+        console.log('Scraped data:', eventData);
         return eventData;
         
     } catch (error) {

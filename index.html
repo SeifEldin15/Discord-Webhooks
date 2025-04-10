@@ -3,72 +3,363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Discord Event Extractor</title>
+    <title>Orders Dashboard</title>
     <style>
-        body { padding: 20px; }
-        .input-group { margin-bottom: 20px; }
-        input[type="text"], input[type="file"] { width: 300px; padding: 5px; margin-right: 10px; }
-        .status { margin-top: 20px; padding: 10px; }
-        .success { color: green; }
-        .error { color: red; }
-        .processing { color: blue; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+
+        body {
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .view-toggle {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .view-toggle button {
+            padding: 8px 16px;
+            border: 1px solid #6c5ce7;
+            background: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .view-toggle button.active {
+            background-color: #6c5ce7;
+            color: white;
+        }
+
+        .view-toggle button:first-child {
+            border-radius: 4px 0 0 4px;
+        }
+
+        .view-toggle button:last-child {
+            border-radius: 0 4px 4px 0;
+        }
+
+        .orders-table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .orders-table th, .orders-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .orders-table th {
+            color: #666;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .update-btn {
+            background: none;
+            border: none;
+            color: #6c5ce7;
+            cursor: pointer;
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .order-summary {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .summary-card h3 {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .summary-card .value {
+            font-size: 24px;
+            color: #6c5ce7;
+            font-weight: 600;
+        }
+
+        .cards-view {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            display: none;
+        }
+
+        .order-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .order-card h3 {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .order-card .items {
+            margin: 15px 0;
+            color: #666;
+        }
+
+        .order-card .customer {
+            margin-top: 15px;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .order-card .customer div {
+            margin: 5px 0;
+        }
+
+        .url-input-container {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .url-input-container input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .url-input-container button {
+            padding: 8px 16px;
+            background-color: #6c5ce7;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .url-input-container button:hover {
+            background-color: #5f4dd0;
+        }
     </style>
 </head>
 <body>
-    <h1>Discord Event Extractor</h1>
-    
-    <div class="input-group">
-        <input type="file" id="xlsxInput" accept=".xlsx">
-        <button onclick="processXlsx()">Process XLSX</button>
-    </div>
+    <div class="dashboard">
+        <h1>Orders Dashboard</h1>
 
-    <div class="input-group">
-        <input type="text" id="discordUrl" placeholder="Enter Discord URL">
-        <button onclick="scrapeDiscord()">Scrape Discord</button>
-    </div>
+        <div class="url-input-container">
+            <input type="text" id="urlInput" placeholder="Enter Encsoft URL" value="https://encsoft.app/?token=4_DI1V4i4_C5DfHBxHvovOBqN0y210hHc80BpBsoGhG1HPnyLJdDQOZYmK7nvvuYJ8sQ">
+            <button onclick="fetchData()">Fetch Data</button>
+        </div>
+        
+        <div class="view-toggle">
+            <button class="active" onclick="switchView('table')">Table View</button>
+            <button onclick="switchView('cards')">Card View</button>
+        </div>
 
-    <div id="status"></div>
+        <div class="table-view">
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th>UPDATE</th>
+                        <th>STORE</th>
+                        <th>STATUS</th>
+                        <th>ITEMS</th>
+                        <th>TOTAL</th>
+                        <th>CUSTOMER NAME</th>
+                        <th>CUSTOMER PHONE</th>
+                        <th>CUSTOMER EMAIL</th>
+                        <th>PAYMENT LAST4</th>
+                        <th>ESTIMATED ARRIVAL</th>
+                    </tr>
+                </thead>
+                <tbody id="ordersTableBody">
+                    <!-- Orders will be populated here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="cards-view" id="cardsView">
+            <!-- Cards will be populated here -->
+        </div>
+
+        <div class="order-summary">
+            <div class="summary-card">
+                <h3>Total Orders</h3>
+                <div class="value" id="totalOrders">0</div>
+            </div>
+            <div class="summary-card">
+                <h3>Total Items</h3>
+                <div class="value" id="totalItems">0</div>
+            </div>
+            <div class="summary-card">
+                <h3>Total Amount</h3>
+                <div class="value" id="totalAmount">$0.00</div>
+            </div>
+        </div>
+    </div>
 
     <script>
         const { ipcRenderer } = require('electron');
 
-        function processXlsx() {
-            const fileInput = document.getElementById('xlsxInput');
-            if (!fileInput.files.length) {
-                showStatus('Please select an XLSX file', 'error');
-                return;
+        function switchView(view) {
+            const tableView = document.querySelector('.table-view');
+            const cardsView = document.querySelector('.cards-view');
+            const buttons = document.querySelectorAll('.view-toggle button');
+            
+            buttons.forEach(btn => btn.classList.remove('active'));
+            if (view === 'table') {
+                tableView.style.display = 'block';
+                cardsView.style.display = 'none';
+                buttons[0].classList.add('active');
+            } else {
+                tableView.style.display = 'none';
+                cardsView.style.display = 'grid';
+                buttons[1].classList.add('active');
             }
-            const filePath = fileInput.files[0].path;
-            showStatus('Processing XLSX file...', 'processing');
-            ipcRenderer.send('process-xlsx', { filePath });
         }
 
-        function scrapeDiscord() {
-            const urlInput = document.getElementById('discordUrl');
-            const url = urlInput.value.trim();
+        function updateOrder(index) {
+            const row = document.querySelector(`[data-row="${index}"]`);
+            const statusCell = row.querySelector('.status-cell');
+            statusCell.innerHTML = '<span class="status-badge">Processing</span>';
+            
+            ipcRenderer.send('process-order', { index });
+        }
+
+        function updateDashboard(orders) {
+            const tableBody = document.getElementById('ordersTableBody');
+            const cardsView = document.getElementById('cardsView');
+            
+            // Clear existing content
+            tableBody.innerHTML = '';
+            cardsView.innerHTML = '';
+
+            // Update table and cards
+            orders.forEach((order, index) => {
+                // Add table row
+                const row = document.createElement('tr');
+                row.setAttribute('data-row', index);
+                row.innerHTML = `
+                    <td><button class="update-btn" onclick="updateOrder(${index})">↻</button></td>
+                    <td>${order.store}</td>
+                    <td class="status-cell"><span class="status-badge">${order.status}</span></td>
+                    <td>${order.items}</td>
+                    <td>$${order.total.toFixed(2)}</td>
+                    <td>${order.customerName}</td>
+                    <td>${order.customerPhone}</td>
+                    <td>${order.customerEmail}</td>
+                    <td>${order.paymentLast4}</td>
+                    <td>${order.estimatedArrival}</td>
+                `;
+                tableBody.appendChild(row);
+
+                // Add card
+                const card = document.createElement('div');
+                card.className = 'order-card';
+                card.innerHTML = `
+                    <h3>
+                        <span>${order.store}</span>
+                        <button class="update-btn" onclick="updateOrder(${index})">↻</button>
+                    </h3>
+                    <span class="status-badge">${order.status}</span>
+                    <div class="items">${order.items}</div>
+                    <div class="price">$${order.total.toFixed(2)}</div>
+                    <div class="customer">
+                        <div>${order.customerName}</div>
+                        <div>${order.customerPhone}</div>
+                        <div>${order.customerEmail}</div>
+                        <div>**** ${order.paymentLast4}</div>
+                        <div>${order.estimatedArrival}</div>
+                    </div>
+                `;
+                cardsView.appendChild(card);
+            });
+
+            // Update summary
+            document.getElementById('totalOrders').textContent = orders.length;
+            document.getElementById('totalItems').textContent = orders.reduce((sum, order) => {
+                return sum + order.items.split(';').length;
+            }, 0);
+            document.getElementById('totalAmount').textContent = '$' + orders.reduce((sum, order) => {
+                return sum + order.total;
+            }, 0).toFixed(2);
+        }
+
+        function fetchData() {
+            const url = document.getElementById('urlInput').value.trim();
             if (!url) {
-                showStatus('Please enter a Discord URL', 'error');
+                alert('Please enter a valid URL');
                 return;
             }
-            showStatus('Scraping Discord data...', 'processing');
-            ipcRenderer.send('scrape-discord', { url });
+            
+            // Clear existing data
+            updateDashboard([]);
+            
+            // Show loading state
+            document.getElementById('totalOrders').textContent = 'Loading...';
+            document.getElementById('totalItems').textContent = 'Loading...';
+            document.getElementById('totalAmount').textContent = 'Loading...';
+            
+            ipcRenderer.send('fetch-data', { url });
         }
 
-        function showStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('status');
-            statusDiv.textContent = message;
-            statusDiv.className = `status ${type}`;
-        }
-
-        ipcRenderer.on('xlsx-process-complete', (event, data) => showStatus(`Successfully processed ${data.count} links.`, 'success'));
-        ipcRenderer.on('xlsx-process-error', (event, error) => showStatus(`Error: ${error}`, 'error'));
-        ipcRenderer.on('discord-scrape-complete', (event, { data, savedFilePath }) => {
-            showStatus(`Successfully scraped ${data.length} events. File saved to: ${savedFilePath}`, 'success');
-            console.log('Scraped data:', data);
-            console.log('Saved to:', savedFilePath);
+        // Add new IPC listener for data fetch response
+        ipcRenderer.on('data-fetch-complete', (event, { orders }) => {
+            updateDashboard(orders);
         });
-        ipcRenderer.on('discord-scrape-error', (event, error) => {
-            showStatus(`Error: ${error}`, 'error');
+
+        ipcRenderer.on('data-fetch-error', (event, { error }) => {
+            alert('Error fetching data: ' + error);
+            updateDashboard([]);
+        });
+
+        // Initialize with empty dashboard instead of sample data
+        updateDashboard([]);
+
+        // Listen for updates from main process
+        ipcRenderer.on('order-update', (event, { index, status }) => {
+            const row = document.querySelector(`[data-row="${index}"]`);
+            const statusCell = row.querySelector('.status-cell');
+            statusCell.innerHTML = `<span class="status-badge">${status}</span>`;
         });
     </script>
 </body>
