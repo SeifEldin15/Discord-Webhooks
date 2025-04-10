@@ -198,45 +198,59 @@ export async function scrapeDiscordData(driver, url) {
         console.log('Navigating to:', url);
         await driver.get(url);
         
-        // Wait for the embed fields to be present
-        await driver.wait(until.elementLocated(By.className('embedFields__623de')), 30000);
+        // Wait for the discord messages to be present
+        await driver.wait(until.elementLocated(By.className('discord-message')), 30000);
         
         // Execute JavaScript in the browser to extract data
         const eventData = await driver.executeScript(() => {
-            const embeds = document.querySelectorAll('.embedFields__623de');
-            return Array.from(embeds).map(embed => {
+            const messages = document.querySelectorAll('.discord-message');
+            return Array.from(messages).map(message => {
                 const fields = {};
                 
-                embed.querySelectorAll('.embedField__623de').forEach(field => {
-                    const name = field.querySelector('.embedFieldName__623de').textContent.trim();
-                    const value = field.querySelector('.embedFieldValue__623de').textContent.trim();
+                // Get all fields from the embed
+                const embedFields = message.querySelectorAll('.field');
+                embedFields.forEach(field => {
+                    const name = field.querySelector('.title').textContent.trim();
+                    const value = field.querySelector('.description').textContent.trim();
                     fields[name] = value;
                 });
                 
-                const links = Array.from(embed.querySelectorAll('a'))
+                // Get the checkout links
+                const links = Array.from(message.querySelectorAll('.description a'))
                     .map(a => a.href)
                     .filter(href => href.includes('checkout.ticketmaster.com') || 
                                   href.includes('checkout.livenation.com') || 
                                   href.includes('encsoft.app'));
                 
+                // Set the main checkout link
                 fields['Checkout Link'] = links.find(link => 
                     link.includes('checkout.ticketmaster.com') || 
                     link.includes('checkout.livenation.com')
                 ) || '';
                 
-                fields['Full Checkout Link'] = links.find(link => 
-                    link.includes('encsoft.app')
-                ) || '';
-                
-                if (!fields['Event ID'] && fields['Checkout Link']) {
-                    const match = fields['Checkout Link'].match(/checkout\.[^/]+\/([a-zA-Z0-9]+)/);
-                    if (match) {
-                        fields['Event ID'] = match[1];
-                    }
+                // Set the full checkout link
+                const fullCheckoutField = Array.from(embedFields).find(field => 
+                    field.querySelector('.title').textContent.trim() === 'Full checkout'
+                );
+                if (fullCheckoutField) {
+                    fields['Full Checkout Link'] = fullCheckoutField.querySelector('.description a')?.href || '';
                 }
                 
+                // Extract event name from embed title if available
+                const embedTitle = message.querySelector('.embed .title');
+                if (embedTitle) {
+                    fields['Event Title'] = embedTitle.textContent.trim();
+                }
+                
+                // Clean up any spoiler tags in the values
+                Object.keys(fields).forEach(key => {
+                    if (fields[key].includes('||')) {
+                        fields[key] = fields[key].replace(/\|\|/g, '');
+                    }
+                });
+                
                 return fields;
-            });
+            }).filter(data => Object.keys(data).length > 0); // Filter out empty messages
         });
         
         console.log('Data extracted:', eventData);

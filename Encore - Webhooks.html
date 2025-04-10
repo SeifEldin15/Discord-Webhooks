@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<!-- saved from url=(0095)https://encsoft.app/?token=4_DI1V4i4_C5DfHBxHvovOBqN0y210hHc80BpBsoGhG1HPnyLJdDQOZYmK7nvvuYJ8sQ -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Encore - Webhooks</title>
+    <style>
+        body {
+            background-color: #36393f; /* Discord's background color */
+            color: #dcddde; /* Discord's text color */
+            font-family: 'Whitney', 'Helvetica Neue', 'Helvetica', 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            font-size: 16px; /* Increased base font size */
+        }
+
+        .messages-container {
+            width: 90%;
+            max-width: 850px;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            height: 100vh;
+            font-size: 14px;
+            position: relative;
+            background-color: #36393f; /* Ensure container matches body */
+        }
+
+        .discord-message {
+            background-color: #36393f; /* Discord message background */
+            border-radius: 5px;
+            padding: 15px; /* Increased padding */
+            margin-bottom: 12px; /* Increased margin for better spacing */
+            display: flex;
+            align-items: flex-start;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .discord-message:hover {
+            background-color: #393c43; /* Slight hover effect */
+            box-shadow: 0 0 7px rgba(0, 0, 0, 0.3); /* Enhanced shadow */
+        }
+
+        .discord-message.new-message {
+            background-color: #3ba55d; /* Highlight color for new messages */
+            animation: fadeHighlight 3s forwards;
+        }
+
+        @keyframes fadeHighlight {
+            from {
+                background-color: #3ba55d;
+                opacity: 1;
+            }
+
+            to {
+                background-color: #2f3136;
+                opacity: 1;
+            }
+        }
+
+        .discord-message img {
+            border-radius: 50%;
+            width: 50px; /* Increased avatar size */
+            height: 50px; /* Increased avatar size */
+            margin-right: 15px; /* Increased margin */
+            flex-shrink: 0;
+        }
+
+        .discord-message-content {
+            flex-grow: 1;
+            min-width: 0;
+        }
+
+        .discord-message-header {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .discord-message-username {
+            font-weight: 500;
+            margin-right: 8px; /* Increased margin */
+            color: #ffffff; /* Username color */
+            word-wrap: break-word;
+            font-size: 1.1em; /* Increased font size */
+        }
+
+        .discord-message-timestamp {
+            color: #72767d;
+            font-size: 14px; /* Increased font size */
+            flex-shrink: 0;
+        }
+
+        .discord-message-text {
+            margin-top: 6px; /* Increased margin */
+            line-height: 1.6; /* Increased line height for better readability */
+            word-wrap: break-word;
+            font-size: 1.05em; /* Slightly increased font size */
+        }
+
+        .embed {
+            background-color: #2f3136;
+            border-radius: 5px;
+            padding: 15px; /* Increased padding */
+            margin-top: 12px; /* Increased margin */
+            border-left: 5px solid; /* Increased border thickness */
+            color: #dcddde;
+        }
+
+        .embed .title {
+            font-weight: 500;
+            margin-bottom: 6px; /* Increased margin */
+            word-wrap: break-word;
+            font-size: 1.1em; /* Increased font size */
+        }
+
+        .embed .description {
+            margin-top: 4px; /* Increased margin */
+            word-wrap: break-word;
+            font-size: 1em; /* Increased font size */
+        }
+
+        .embed .fields {
+            display: flex;
+            flex-wrap: wrap;
+            margin-top: 12px; /* Increased margin */
+        }
+
+        .embed .field {
+            flex: 1 1 100%;
+            margin-bottom: 12px; /* Increased margin */
+        }
+
+        .embed .field.inline {
+            flex: 1 1 45%;
+            margin-right: 15px; /* Increased margin */
+        }
+
+        .embed img {
+            max-width: 100%;
+            border-radius: 5px;
+            margin-top: 12px; /* Increased margin */
+        }
+
+        /* Define base link styles inside messages */
+        .discord-message a {
+            color: #00aff4; /* Discord link blue */
+            text-decoration: none; /* Remove underline by default */
+            font-size: 1.05em; /* Increased font size */
+        }
+
+        /* Define hover state for links */
+        .discord-message a:hover {
+            text-decoration: underline; /* Add underline on hover */
+        }
+
+        /* Include visited link color if required */
+        .discord-message a:visited {
+            color: #7289da; /* Slightly different shade for visited links (optional) */
+        }
+
+        @media (max-width: 700px) { /* Adjusted breakpoint for increased max-width */
+            .embed .field.inline {
+                flex: 1 1 100%;
+                margin-right: 0;
+            }
+        }
+
+        /* Custom Scrollbar Styles */
+        .messages-container::-webkit-scrollbar {
+            width: 14px; /* Increased scrollbar width */
+        }
+
+        .messages-container::-webkit-scrollbar-track {
+            background: #2e3338;
+            border-radius: 10px;
+        }
+
+        .messages-container::-webkit-scrollbar-thumb {
+            background-color: #202225;
+            border-radius: 10px;
+            border: 4px solid #2e3338; /* Increased border size */
+        }
+
+        /* Firefox */
+        .messages-container {
+            scrollbar-width: thin;
+            scrollbar-color: #202225 #2e3338;
+        }
+
+        .reaction-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2em; /* Increased font size */
+            margin-top: 8px; /* Increased margin */
+            color: #b9bbbe;
+            display: flex;
+            align-items: center;
+            padding: 4px 6px; /* Increased padding */
+            border-radius: 4px; /* Slightly increased border radius */
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .reaction-button:hover {
+            background-color: #4f545c;
+            color: #fff;
+        }
+
+        .reaction-count {
+            font-size: 0.9em; /* Increased font size */
+            margin-left: 6px; /* Increased margin */
+            color: #dcddde;
+        }
+
+        .spoiler {
+            background-color: #202225;
+            color: transparent;
+            border-radius: 3px;
+            transition: all 0.1s ease;
+            cursor: pointer;
+            padding: 3px 6px; /* Increased padding */
+            font-size: 1em; /* Increased font size */
+        }
+
+        .spoiler:hover,
+        .spoiler.revealed {
+            background-color: rgba(32, 34, 37, 0.1);
+            color: #dcddde;
+        }
+
+        /* New Indicator */
+        .new-indicator {
+            position: absolute;
+            bottom: 30px; /* Increased distance from bottom */
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #5865f2; /* Discord blurple */
+            color: white;
+            padding: 8px 16px; /* Increased padding */
+            border-radius: 25px; /* Increased border radius for a more pill-like shape */
+            cursor: pointer;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3); /* Enhanced shadow */
+            font-size: 16px; /* Increased font size */
+            font-weight: 500;
+        }
+
+        .new-indicator.show {
+            display: block;
+            animation: bounce 0.5s;
+        }
+
+        @keyframes bounce {
+            0% {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(-10px); /* Increased bounce distance */
+            }
+
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+
+        /* Loading Indicator */
+        .loading-indicator {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 20px;
+            display: none;
+            z-index: 1000;
+            font-size: 14px;
+            font-weight: 500;
+            align-items: center;
+        }
+
+        .loading-indicator.show {
+            display: flex;
+            animation: fadeIn 0.3s;
+        }
+
+        .loading-indicator::after {
+            content: "";
+            border: 4px solid #f3f3f3; /* Light gray */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 2s linear infinite;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Optional: Scroll to Top Button */
+        /* .scroll-to-top {
+            position: fixed;
+            bottom: 100px; /* Adjusted position for larger indicator */
+            right: 25px; /* Increased distance from the edge */
+            background-color: #7289da;
+            color: white;
+            padding: 10px 16px; /* Increased padding */
+            border-radius: 5px; /* Increased border radius */
+            cursor: pointer;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3); /* Enhanced shadow */
+            font-size: 16px; /* Increased font size */
+            font-weight: 500;
+        }
+
+        .scroll-to-top.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        } */
+    </style>
+    <script>
+        function convertUTCToLocalTime(unixTimestamp) {
+            let date = new Date(unixTimestamp * 1000);
+            const options = {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            };
+            const formattedDateTime = date.toLocaleString('en-US', options);
+            return formattedDateTime;
+        }
+
+        function formatSpoilers(text) {
+            return text.replace(/\|\|(.*?)\|\|/g, '<span class="spoiler">$1</span>');
+        }
+
+        async function reactToMessage(token, messageId, buttonElement) {
+            try {
+                const response = await fetch('/api/messages/react', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ token, messageId }),
+                });
+                const data = await response.json();
+                buttonElement.querySelector('.reaction-count').textContent = data.reactionCount;
+            } catch (error) {
+                console.error('Error reacting to message:', error);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            const messagesContainer = document.querySelector('.messages-container');
+            const newIndicator = document.querySelector('.new-indicator');
+            const loadingIndicator = document.createElement('div');
+            loadingIndicator.className = 'loading-indicator';
+            loadingIndicator.textContent = 'Loading...';
+            messagesContainer.prepend(loadingIndicator);
+            // const scrollToTopButton = document.querySelector('.scroll-to-top'); // Optional
+            let latestMessageTimestamp = 0;
+            let oldestMessageTimestamp = 0;
+            let currentPage = 1;
+            let isLoadingOldMessages = false;
+            let hasMoreOldMessages = true;
+
+            function updateTimestamps() {
+                const timestampElements = document.querySelectorAll(".converted-time");
+
+                timestampElements.forEach(function (element) {
+                    const unixTimestamp = parseInt(element.getAttribute("data-utc-timestamp"));
+                    const formattedTimestamp = convertUTCToLocalTime(unixTimestamp);
+                    element.innerHTML = formattedTimestamp;
+                });
+            }
+
+            function appendMessages(messages, highlight = false, prepend = false) {
+                if (prepend) {
+                    messages = messages.reverse();
+                }
+
+                messages.forEach(message => {
+                    // Avoid duplicate messages
+                    if (document.getElementById(`message-${message.messageId}`)) return;
+
+                    const messageElement = document.createElement('div');
+                    messageElement.className = 'discord-message';
+                    messageElement.id = `message-${message.messageId}`;
+                    if (highlight) {
+                        messageElement.classList.add('new-message');
+                    }
+                    messageElement.innerHTML = `
+                        <img src="${message.avatarUrl || 'https://cdn.discordapp.com/avatars/1114811292570632333/4932e64fecffa32f2ba00a0b0eac960a.webp'}" alt="Avatar">
+                        <div class='discord-message-content'>
+                            <div class='discord-message-header'>
+                                <span class='discord-message-username'>${message.username}</span>
+                                <span class='discord-message-timestamp'>
+                                    <div class="converted-time" data-utc-timestamp="${message.timestamp}"></div>
+                                </span>
+                            </div>
+                            <div class='discord-message-text'>${formatSpoilers(message.text)}</div>
+                            ${message.embeds.map(embed => `
+                                <div class='embed' style='border-color: ${embed.color}'>
+                                    <div class='title'>${formatSpoilers(embed.title)}</div>
+                                    <div class='description'>${embed.description.includes("http://") || embed.description.includes("https://") ? `<a href='${embed.description}' target="_blank">${formatSpoilers(embed.description)}</a>` : formatSpoilers(embed.description)}</div>
+                                    <div class='fields'>
+                                        ${embed.fields.map(field => `<div class='${field.inline ? "field inline" : "field"}'>
+                                            <div class='title'>${formatSpoilers(field.name)}</div>
+                                            <div class='description'>${field.value.includes("http://") || field.value.includes("https://") ? `<a href='${field.value}' target="_blank">${formatSpoilers(field.value)}</a>` : formatSpoilers(field.value)}</div>
+                                        </div>`).join('')}
+                                    </div>
+                                    ${embed.imageUrl ? `<img src='${embed.imageUrl}' alt='Embed Image'>` : ''}
+                                </div>
+                            `).join('')}
+                            <button class="reaction-button" onclick="reactToMessage('${getToken()}', '${message.messageId}', this)">
+                                ✅ <span class="reaction-count">${message.reactionCount}</span>
+                            </button>
+                        </div>
+                    `;
+
+                    if (prepend) {
+                        messagesContainer.prepend(messageElement);
+                    } else {
+                        messagesContainer.appendChild(messageElement);
+                    }
+
+                    if (highlight) {
+                        // Update the latest message timestamp
+                        if (message.timestamp > latestMessageTimestamp) {
+                            latestMessageTimestamp = message.timestamp;
+                        }
+                    }
+
+                    // Update the oldest message timestamp
+                    if (message.timestamp < oldestMessageTimestamp || oldestMessageTimestamp === 0) {
+                        oldestMessageTimestamp = message.timestamp;
+                    }
+                });
+
+                updateTimestamps();
+            }
+
+            function getToken() {
+                let params = new URLSearchParams(document.location.search);
+                return params.get("token");
+            }
+
+            async function loadInitialMessages() {
+                try {
+                    let token = getToken();
+                    loadingIndicator.classList.add('show');
+                    const response = await fetch(`/api/messages?token=${token}&page=1`);
+                    const data = await response.json();
+
+                    if (data.length > 0) {
+                        // Assuming messages are sorted from oldest to newest
+                        currentPage = 1;
+                        latestMessageTimestamp = data[data.length - 1].timestamp;
+                        oldestMessageTimestamp = data[0].timestamp;
+                        appendMessages(data);
+                        // Scroll to bottom after initial load
+                        scrollToBottom();
+                        // Remove loading indicator
+                        loadingIndicator.classList.remove('show');
+                    } else {
+                        loadingIndicator.classList.remove('show');
+                        hasMoreOldMessages = false;
+                    }
+                } catch (error) {
+                    console.error('Error loading initial messages:', error);
+                    loadingIndicator.textContent = 'Failed to load messages.';
+                }
+            }
+
+            async function fetchNewMessages() {
+                if (loadingIndicator.classList.contains('show'))
+                    return;
+                
+                try {
+                    let token = getToken();
+                    const response = await fetch(`/api/messages?token=${token}&after=${latestMessageTimestamp}`);
+                    const data = await response.json();
+
+                    if (data.length > 0) {
+                        appendMessages(data, true);
+                        if (isUserAtBottom()) {
+                            scrollToBottom();
+                        } else {
+                            showNewIndicator();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error fetching new messages:', error);
+                }
+            }
+
+            async function fetchOldMessages() {
+                if (isLoadingOldMessages || !hasMoreOldMessages) return;
+
+                isLoadingOldMessages = true;
+                loadingIndicator.classList.add('show');
+
+                try {
+                    let token = getToken();
+                    const nextPage = currentPage + 1;
+                    const response = await fetch(`/api/messages?token=${token}&page=${nextPage}`);
+                    const data = await response.json();
+
+                    if (data.length > 0) {
+                        const previousScrollHeight = messagesContainer.scrollHeight;
+                        appendMessages(data, false, true);
+                        currentPage = nextPage;
+                        // Maintain scroll position after prepending
+                        const newScrollHeight = messagesContainer.scrollHeight;
+                        messagesContainer.scrollTop = newScrollHeight - previousScrollHeight + messagesContainer.scrollTop;
+                    } else {
+                        hasMoreOldMessages = false;
+                    }
+                } catch (error) {
+                    console.error('Error fetching old messages:', error);
+                } finally {
+                    loadingIndicator.classList.remove('show');
+                    isLoadingOldMessages = false;
+                }
+            }
+
+            function isUserAtBottom() {
+                return messagesContainer.scrollHeight - messagesContainer.scrollTop <= messagesContainer.clientHeight + 50;
+            }
+
+            function scrollToBottom() {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+
+            function showNewIndicator() {
+                newIndicator.classList.add('show');
+            }
+
+            newIndicator.addEventListener('click', function () {
+                scrollToBottom();
+                newIndicator.classList.remove('show');
+            });
+
+            messagesContainer.addEventListener('scroll', function () {
+                if (messagesContainer.scrollTop <= 100) { // Threshold to trigger loading old messages
+                    fetchOldMessages();
+                }
+
+                if (messagesContainer.scrollTop + messagesContainer.clientHeight >= messagesContainer.scrollHeight - 10) {
+                    // User scrolled to bottom
+                    newIndicator.classList.remove('show');
+                }
+            });
+
+            document.addEventListener('click', function (e) {
+                if (e.target.classList.contains('spoiler')) {
+                    e.target.classList.toggle('revealed');
+                }
+            });
+
+            // Auto-refresh: Fetch new messages
+            setInterval(fetchNewMessages, 15000);
+
+            // Initial load
+            loadInitialMessages();
+        });
+    </script>
+</head>
+
+<body>
+    <div class="messages-container"><div class="loading-indicator">Loading...</div>
+    <div class="discord-message" id="message-6323832">
+                        <img src="./Encore - Webhooks_files/4932e64fecffa32f2ba00a0b0eac960a.webp" alt="Avatar">
+                        <div class="discord-message-content">
+                            <div class="discord-message-header">
+                                <span class="discord-message-username">Encore IO</span>
+                                <span class="discord-message-timestamp">
+                                    <div class="converted-time" data-utc-timestamp="1743812115">Apr 5, 2025, 02:15 AM</div>
+                                </span>
+                            </div>
+                            <div class="discord-message-text"></div>
+                            
+                                <div class="embed" style="border-color: #097969">
+                                    <div class="title">Successfully carted!</div>
+                                    <div class="description"><a href="https://checkout.ticketmaster.com/d73ce619cde542879bc2c64df7f3fccc" target="_blank">https://checkout.ticketmaster.com/d73ce619cde542879bc2c64df7f3fccc</a></div>
+                                    <div class="fields">
+                                        <div class="field inline">
+                                            <div class="title">Store</div>
+                                            <div class="description">US</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Event ID</div>
+                                            <div class="description">0800613CF02359A6</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Event name</div>
+                                            <div class="description">Teddy Swims</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Date</div>
+                                            <div class="description">2025-05-21</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Account</div>
+                                            <div class="description">superuser123@post.com</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Password</div>
+                                            <div class="description"><span class="spoiler">Ticketmaster!1234</span></div>
+                                        </div><div class="field inline">
+                                            <div class="title">Section</div>
+                                            <div class="description">400C</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Row</div>
+                                            <div class="description">L</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Price</div>
+                                            <div class="description">236</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Amount</div>
+                                            <div class="description">6</div>
+                                        </div><div class="field inline">
+                                            <div class="title">Expiration</div>
+                                            <div class="description"><t:1743787390:r></t:1743787390:r></div>
+                                        </div><div class="field">
+                                            <div class="title">Full checkout</div>
+                                            <div class="description"><a href="https://encsoft.app/api/bot/getLink?id=00F808FA0AF8" target="_blank">https://encsoft.app/api/bot/getLink?id=00F808FA0AF8</a></div>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            
+                            <button class="reaction-button" onclick="reactToMessage(&#39;4_DI1V4i4_C5DfHBxHvovOBqN0y210hHc80BpBsoGhG1HPnyLJdDQOZYmK7nvvuYJ8sQ&#39;, &#39;6323832&#39;, this)">
+                                ✅ <span class="reaction-count">0</span>
+                            </button>
+                        </div>
+                    </div></div>
+    <div class="new-indicator">New Messages</div>
+
+
+
+</body></html>
