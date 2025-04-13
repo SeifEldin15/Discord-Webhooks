@@ -65,8 +65,8 @@ export async function processLinks(driver, links, cardData) {
 
             // Attempt to enter email and password, skip if not found
             try {
-                await driver.findElement(By.id("email[objectobject]__input")).sendKeys(cardData.email || "superuser123@post.com");
-                await driver.findElement(By.id("password[objectobject]__input")).sendKeys(cardData.password || "Ticketmaster!123");
+                await driver.findElement(By.id("email[objectobject]__input")).sendKeys("superuser123@post.com");
+                await driver.findElement(By.id("password[objectobject]__input")).sendKeys("Agamista135$");
                 await driver.findElement(By.name("sign-in")).click();
             } catch (error) {
                 console.warn('Login form not found, continuing...');
